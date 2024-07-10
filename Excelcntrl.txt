@@ -1,0 +1,289 @@
+/*
+ * InSilico Solutions And Services 
+ * www.insilicoss.com
+ */
+package com.insilicoss.item;
+
+import com.insilicoss.config.AppConfigService;
+import com.insilicoss.database.DBManager;
+import com.insilicoss.eventManager.CoreRequest;
+import com.insilicoss.eventManager.CoreResponse;
+import com.insilicoss.eventManager.OperationResponse;
+import com.insilicoss.exception.PresentableException;
+import com.insilicoss.fileManager.PersistentFile;
+import com.insilicoss.fileManager.PersistentFileService;
+import com.insilicoss.messaging.CoreMessage;
+import com.insilicoss.row.dataRow.ItemDataRow;
+import com.insilicoss.row.dataRow.ItemNtyMpngDataRow;
+import com.insilicoss.sparc.SparcCnstntDbVar;
+import com.insilicoss.util.ResultSetToExcel;
+import com.insilicoss.util.excel.ExcelBridge;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.UUID;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+/**
+ *
+ * @author Alaknanda
+ */
+public class ItemExcelControler {
+  
+  CoreRequest cvoCoreReq;
+  CoreResponse cvoCoreRes;
+  Logger cvoLogger;
+  DBManager cvoDBManager;
+  String cvsSQlPath;
+  
+  class FieldProperties {
+
+    public String colName;
+    public String fieldName;
+    public int order;
+    public boolean optionalColumn;
+    public Class type;
+    public int excelColIndex;
+  }
+
+  public ItemExcelControler(CoreRequest coreReq, CoreResponse coreRes) {
+    cvoCoreReq   = coreReq;
+    cvoCoreRes   = coreRes;
+    cvsSQlPath   = "ItemExcelControler" + File.separator;
+    cvoLogger    = LogManager.getLogger();
+    cvoDBManager = cvoCoreReq.getDBManager();
+    cvoDBManager.addContextParamFromClass(SparcCnstntDbVar.class);
+  } 
+  
+   public void upldItemInputsFile() throws Exception {
+    String lvsFileId;
+    OperationResponse lvoOr;
+    ExcelBridge<ItemDataRow> lvoExcelBridge;
+    PersistentFile lvoPersistentEmpXcelUpldFile;
+    List<ItemDataRow> lvoItemXcelDataRowList;
+    File outputFile;
+  
+    lvsFileId = cvoCoreReq.getVal("svsItemFileIdy");
+    lvoPersistentEmpXcelUpldFile = PersistentFileService.getInstance().getFile("Item", lvsFileId, cvoDBManager);
+    lvoExcelBridge = new ExcelBridge(lvoPersistentEmpXcelUpldFile.file, ItemDataRow.class, 0, 1);
+    lvoOr = lvoExcelBridge.readData("Items");
+    
+    if (lvoOr.sts) {
+      lvoItemXcelDataRowList = (List<ItemDataRow>) lvoOr.result;
+    } else {
+      throw new PresentableException(lvoOr.msg);
+    }
+
+    //builder(empId, EmpMgrId, code) 
+    ItemModel lvoItemModel = null; 
+    
+    for (ItemDataRow lvoItemInputsDataRow : lvoItemXcelDataRowList) { 
+      try{ 
+        lvoItemModel =  ItemModel.load(lvoItemInputsDataRow.svsItemIdy, cvoDBManager); 
+                        lvoItemModel.setItemIdy(lvoItemInputsDataRow.svsItemIdyDesc); 
+                        lvoItemModel.setItemDesc(lvoItemInputsDataRow.svsItemDesc); 
+                        lvoItemModel.setItemUomIdy(lvoItemInputsDataRow.svsItemUomDesc); 
+                        lvoItemModel.setItemDateEfctvFrom(lvoItemInputsDataRow.svdItemDateEfctvFrom); 
+                        lvoItemModel.setItemDateEfctvTo(lvoItemInputsDataRow.svdItemDateEfctvTo); 
+                        String lvsIsSellItem = lvoItemInputsDataRow.svbIsSellItem; 
+                        if(lvsIsSellItem.equalsIgnoreCase("Y") || lvsIsSellItem.equalsIgnoreCase("Yes")){
+                            lvoItemModel.setIsSellItem("1"); 
+                        } 
+                        else{
+                          lvoItemModel.setIsSellItem("0");
+                        }
+                        String lvsIsPchsItem = lvoItemInputsDataRow.svbIsPchsItem;
+                        if(lvsIsPchsItem.equalsIgnoreCase("Y") || lvsIsPchsItem.equalsIgnoreCase("Yes")){
+                            lvoItemModel.setIsPchsItem("1"); 
+                        } 
+                        else{
+                          lvoItemModel.setIsPchsItem("0");
+                        } 
+                        String lvsIsAsetItem = lvoItemInputsDataRow.svbIsAsetItem;
+                        if(lvsIsAsetItem.equalsIgnoreCase("Y") || lvsIsAsetItem.equalsIgnoreCase("Yes")){
+                            lvoItemModel.setIsAsetItem("1"); 
+                        } 
+                        else{
+                          lvoItemModel.setIsAsetItem("0");
+                        } 
+                        String lvsIsItcAplcbl = lvoItemInputsDataRow.svbIsItcAplcbl;
+                         if(lvsIsItcAplcbl.equalsIgnoreCase("Y") || lvsIsItcAplcbl.equalsIgnoreCase("Yes")){
+                            lvoItemModel.setIsItcAplcbl("1"); 
+                        } 
+                        else{
+                          lvoItemModel.setIsItcAplcbl("0");
+                        } 
+                        lvoItemModel.setItemHsnSac(lvoItemInputsDataRow.svsItemHsnSac); 
+                        lvoItemModel.setAsetBookNatur(lvoItemInputsDataRow.svsAsetBookNaturDesc); 
+                        String lvsIsInvItem = lvoItemInputsDataRow.svbIsInvItem; 
+                        if(lvsIsInvItem .equalsIgnoreCase("Y") || lvsIsInvItem .equalsIgnoreCase("Yes")){
+                            lvoItemModel.setIsInvItem ("1"); 
+                        } 
+                        else{
+                          lvoItemModel.setIsInvItem ("0");
+                        }  
+                        String lvsIsXpnsItem = lvoItemInputsDataRow.svbIsXpnsItem;
+                   
+                        lvoItemModel.setIsXpnsItem(lvoItemInputsDataRow.svbIsXpnsItem); 
+                         if(lvsIsXpnsItem .equalsIgnoreCase("Y") || lvsIsXpnsItem .equalsIgnoreCase("Yes")){
+                            lvoItemModel.setIsXpnsItem ("1"); 
+                        } 
+                        else{
+                          lvoItemModel.setIsXpnsItem ("0");
+                        } 
+                        String lvsAsetTaxCtgry = lvoItemInputsDataRow.svsAsetTaxCtgryId;
+                        cvoDBManager.addContextParam("rvsAsetTaxCtgry",lvsAsetTaxCtgry);
+                        ResultSet lviAsetTaxCtgryD = cvoDBManager.selectResultSet("Item//s1rAsetTaxCtgryD");
+                        lviAsetTaxCtgryD.next();
+                        int AsetTaxCtgryD = lviAsetTaxCtgryD.getInt("sviAsetTaxCtgryD");
+                        
+                        if(AsetTaxCtgryD != 0){
+                          lvoItemModel.setAsetTaxCtgryD(AsetTaxCtgryD);
+                        } 
+                        else{
+                        lvoItemModel.setAsetTaxCtgryD(0); 
+                        }
+                        String lvsAsetActCtgry = lvoItemInputsDataRow.svsAsetActCtgryId; 
+                        
+                        cvoDBManager.addContextParam("rvsAsetActCtgry",lvsAsetActCtgry);
+                        ResultSet lviAsetActCtgryD = cvoDBManager.selectResultSet("Item//s1rAsetActCtgryD");
+                        lviAsetActCtgryD.next();
+                        int AsetActCtgryD = lviAsetActCtgryD.getInt("sviAsetActCtgryD"); 
+                        if(AsetActCtgryD != 0){
+                          lvoItemModel.setAsetActCtgryD(AsetActCtgryD);
+                        }
+                        else{
+                        lvoItemModel.setAsetActCtgryD(0);
+                       } 
+                       try{
+                       String lvsItemOperation = lvoItemInputsDataRow.svsItemOperation; 
+                       validateInput(lvsItemOperation);
+                       if(lvsItemOperation.equalsIgnoreCase("I"))
+                       {
+                         lvoItemModel.insert();
+                       }
+                       else{
+                         lvoItemModel.update();
+                       }
+                       }
+                       catch(PresentableException pe){ 
+                       lvoItemInputsDataRow.svsUpdateSts = ExcelBridge.UpdateStatus.FAILED; 
+                       lvoItemInputsDataRow.svsRemarks   = pe.getMessage(); 
+                       break;
+                      } 
+        cvoLogger.debug("====================================="+lvoItemModel.cviItemD);
+      } 
+      
+      catch(PresentableException pe){ 
+        lvoItemInputsDataRow.svsUpdateSts = ExcelBridge.UpdateStatus.FAILED; 
+        lvoItemInputsDataRow.svsRemarks   = pe.getMessage(); 
+        continue;
+      } 
+      /*catch(Exception e){ 
+        lvoItemInputsDataRow.svsUpdateSts = ExcelBridge.UpdateStatus.FAILED; 
+        lvoItemInputsDataRow.svsRemarks   = "Internal error."; 
+        continue;
+      } */
+      
+      cvoDBManager.commitTrans();
+      lvoItemInputsDataRow.svsUpdateSts = ExcelBridge.UpdateStatus.SUCCESS;
+      lvoItemInputsDataRow.svsRemarks = "";
+     
+    }
+    
+    List<String> lvoWriteBackLableList = List.of(ItemDataRow.ItemInputXcelLables.UPDATE_STATUS_LABLE, ItemDataRow.ItemInputXcelLables.UPDATE_REMARKS_LABLE);
+    lvoOr = lvoExcelBridge.writeBack(lvoItemXcelDataRowList, lvoWriteBackLableList,"Items");
+    
+     cvoLogger.debug("====================================="+lvoWriteBackLableList);
+    
+    ExcelBridge<ItemNtyMpngDataRow> lvoExcelBridgeForItemNty;
+    List<ItemNtyMpngDataRow> lvoItemNtyXcelDataRowList;
+    
+    lvoExcelBridgeForItemNty = new ExcelBridge(lvoPersistentEmpXcelUpldFile.file,ItemNtyMpngDataRow.class,0,1);
+    lvoOr = lvoExcelBridgeForItemNty.readData("Item Entity Maping List");
+    
+    if(lvoOr.sts){
+      lvoItemNtyXcelDataRowList = (List<ItemNtyMpngDataRow>) lvoOr.result; 
+    }
+    else{
+      throw new PresentableException(lvoOr.msg);
+    }
+    
+    NtyMstrMpngModel lvontyMstrMpngModel;
+    
+    for(ItemNtyMpngDataRow lvoItemNtyMpngDataRow:lvoItemNtyXcelDataRowList){
+      try{
+        String lvsItemIdyRvsed   =  lvoItemNtyMpngDataRow.svsItemIdyRvsed;
+        cvoDBManager.addContextParam("rvsItemIdyRvsed",lvsItemIdyRvsed);
+        ResultSet lvoItemIdyRvsedD = cvoDBManager.selectResultSet("Item/sarItemIdyRvsedD");
+        lvoItemIdyRvsedD.next();
+        int lviItemIdyRvsedD   = lvoItemIdyRvsedD.getInt("sviItemIdyRvsedD");
+        String lvsBizNtyIdy    = lvoItemNtyMpngDataRow.svsBizNtyIdy;
+        cvoDBManager.addContextParam("rvsBizNtyIdy",lvsBizNtyIdy);
+        ResultSet lvoBizNtyIdyD   =  cvoDBManager.selectResultSet("Item/sarBizNtyIdyD");
+        lvoBizNtyIdyD.next();
+        int lviBizNtyIdyD  = lvoBizNtyIdyD.getInt("sviBizNtyIdyD");
+        lvontyMstrMpngModel = NtyMstrMpngModel.load(lviItemIdyRvsedD, lviBizNtyIdyD, cvoDBManager);
+                            lvontyMstrMpngModel.setNtyMstrActv("1");
+                            lvontyMstrMpngModel.setMstrOnrD(lviBizNtyIdyD);
+                            lvontyMstrMpngModel.setNtyD(lviBizNtyIdyD);
+                            lvontyMstrMpngModel.setNtyMstrFrom(lvoItemNtyMpngDataRow.svdBizNtyItemAcessFrom);
+                            lvontyMstrMpngModel.setNtyMstrTo(lvoItemNtyMpngDataRow.svdBizNtyItemAcessFrom);
+                            
+       lvontyMstrMpngModel.save();
+     }
+     catch(PresentableException pe){
+       lvoItemNtyMpngDataRow.svsUpdateSts = ExcelBridge.UpdateStatus.FAILED;
+       lvoItemNtyMpngDataRow.svsRemarks   = pe.getMessage(); 
+       continue;
+     }
+      
+      cvoDBManager.commitTrans();
+      lvoItemNtyMpngDataRow.svsUpdateSts = ExcelBridge.UpdateStatus.SUCCESS;
+      lvoItemNtyMpngDataRow.svsRemarks = "";
+    }
+  
+      
+     
+     
+      
+      lvoWriteBackLableList = List.of(ItemNtyMpngDataRow.ItemNtyMpngInputXcelLables.UPDATE_STATUS_LABLE, ItemNtyMpngDataRow.ItemNtyMpngInputXcelLables.UPDATE_REMARKS_LABLE);
+      lvoOr = lvoExcelBridgeForItemNty.writeBack(lvoItemNtyXcelDataRowList, lvoWriteBackLableList,"Item Entity Maping List");
+      
+      cvoLogger.debug("====================================="+lvoWriteBackLableList);
+      if (!lvoOr.sts) {
+        cvoCoreRes.addMessage(new CoreMessage("Records has saved successfully but couldn't download the update status. Please contact to support team.", CoreMessage.SUCCESS_TYPE, CoreMessage.STATUS_OK));
+      return;
+    }
+
+    outputFile = (File) lvoOr.result;
+    cvoCoreRes.setFile("Update status of uploaded data for Item component inputs.xlsx", outputFile, false);
+    cvoCoreRes.addMessage(new CoreMessage("For detailed updation status, please refer the downloaded excel.", CoreMessage.SUCCESS_TYPE, CoreMessage.STATUS_OK));
+  } 
+   
+  public void dwnldItemXcelFrFrmt() throws IOException, FileNotFoundException, SQLException {
+    File lvoFile = new File(AppConfigService.getInstance().getTempFolderPath() + File.separator + UUID.randomUUID().toString()+".xlsx"); 
+    ExcelBridge.buildTemplate(ItemDataRow.class, lvoFile, "Items"); 
+    ExcelBridge.buildTemplate(ItemNtyMpngDataRow.class, lvoFile, "Item Entity Maping List"); 
+    cvoCoreRes.setFile("Item_upload_excel_Format" + ".xlsx", lvoFile, false); 
+    cvoCoreRes.addMessage(new CoreMessage("File downloaded successfully.", CoreMessage.SUCCESS_TYPE, 200)); 
+    ResultSet lvoRefrnc = cvoDBManager.selectResultSet("Item/sarRfrncData"); 
+    new ResultSetToExcel(lvoRefrnc, null, null, lvoFile, "Item Reference", cvoLogger); 
+    
+    
+    lvoRefrnc = cvoDBManager.selectResultSet("Item/sarRfrncDataForItemNty"); 
+    new ResultSetToExcel(lvoRefrnc, null, null, lvoFile, "Item Entity Reference ", cvoLogger); 
+    
+  } 
+  
+  public void validateInput(String lvsItemOperation) throws PresentableException{
+    if(!lvsItemOperation.equals("I")  && !lvsItemOperation.equals("U"))
+    {
+      throw new PresentableException("You can only write 'I' or 'U'"); 
+    }
+  }
+} 
